@@ -70,8 +70,8 @@ HEADS = { 'hm': 16, 'depth': 16 }
 LEARNING_RATE = 0.001
 GPU_NUM = -1
 
-CAMERA_WIDTH = 320
-CAMERA_HEIGHT = 240
+CAMERA_WIDTH = 256
+CAMERA_HEIGHT = 256
 CAMERA_CENTER = np.array([CAMERA_WIDTH / 2.0, CAMERA_HEIGHT / 2.0], dtype = np.float32)
 CAMERA_SCALE = max(CAMERA_HEIGHT, CAMERA_WIDTH) * 1.0
 
@@ -92,17 +92,6 @@ def create_model():
     state_dict = checkpoint['state_dict'] if type(checkpoint) == type({}) else checkpoint.state_dict()
     model.load_state_dict(state_dict, strict = False)
 
-    return model
-
-
-def body_predictor(img):
-    # """
-    CAMERA_SCALE = max(img.shape[0], img.shape[1]) * 1.0
-    CAMERA_CENTER = np.array([img.shape[1] / 2., img.shape[0] / 2.], dtype=np.float32)
-    CAMERA_HEIGHT = img.shape[0]
-    CAMERA_WIDTH = img.shape[1]
-    # """
-
     device_type = 'cpu' if GPU_NUM == -1 else 'cuda:{}'.format(GPU_NUM)
     device = torch.device(device_type)
     model = create_model()
@@ -110,31 +99,40 @@ def body_predictor(img):
     model.eval()
 
     trans_input = get_affine_transform(CAMERA_CENTER, CAMERA_SCALE, 0, [CAMERA_WIDTH, CAMERA_HEIGHT])
-    inp = img
 
-    start_time = time.clock()
-    # inp = cv.warpAffine(img, trans_input, (CAMERA_WIDTH, CAMERA_HEIGHT), flags = cv.INTER_LINEAR)
-    print(inp.shape)
-    inp = (inp / 255. - MEAN) / STD
-    inp = inp.transpose(2, 0, 1)[np.newaxis, ...].astype(np.float32)
-    inp = torch.from_numpy(inp).to(device)
-    out = model(inp)[-1]
 
-    pred = None
-    # pred = get_preds(out['hm'].detach().cpu().numpy())[0]
-    # pred = transform_preds(pred, CAMERA_CENTER, CAMERA_SCALE, (CAMERA_WIDTH, CAMERA_HEIGHT))
-    pred_3d = get_preds_3d(out['hm'].detach().cpu().numpy(),
-                           out['depth'].detach().cpu().numpy())[0]
-    end_time = time.clock() - start_time
-    print(end_time * 1000)
-    
-    return pred, pred_3d
+    return model
+
+class BodyPredictor:
+    def __init__(self):
+        self.model = create_model()
+
+    def readImg(self, img):
+        # inp = cv.warpAffine(img, trans_input, (CAMERA_WIDTH, CAMERA_HEIGHT), flags = cv.INTER_LINEAR)
+        inp = img
+        inp = (inp / 255. - MEAN) / STD
+        inp = inp.transpose(2, 0, 1)[np.newaxis, ...].astype(np.float32)
+        inp = torch.from_numpy(inp).to(device)
+        out = model(inp)[-1]
+
+        # pred = get_preds(out['hm'].detach().cpu().numpy())[0]
+        # pred = transform_preds(pred, CAMERA_CENTER, CAMERA_SCALE, (CAMERA_WIDTH, CAMERA_HEIGHT))
+        pred_3d = get_preds_3d(out['hm'].detach().cpu().numpy(),
+                               out['depth'].detach().cpu().numpy())[0]
+        
+
+        return pred_3d
 
 
 if __name__ == "__main__":
-    img = cv.imread('../images/mpii_47.png')
-    pred, pred_3d = body_predictor(img)
+    body_predictor = BodyPredictor()
 
-    print(pred)
+    img = cv.imread('../images/mpii_47.png')
+
+    start_time = time.clock()
+    pred_3d = body_predictor.readImg(img)
+    end_time = time.clock() - start_time
+
     print(pred_3d)
+    print(end_time * 1000)
 
