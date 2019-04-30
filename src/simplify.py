@@ -68,6 +68,7 @@ MODEL_PATH = '../models/fusion_3d_var.pth' # opt.load_model
 LAYER_NUM = 50
 HEADS = { 'hm': 16, 'depth': 16 }
 LEARNING_RATE = 0.001
+GPU_NUM = -1
 
 CAMERA_WIDTH = 320
 CAMERA_HEIGHT = 240
@@ -102,8 +103,8 @@ def body_predictor(img):
     CAMERA_WIDTH = img.shape[1]
     # """
 
-     
-    device = torch.device('cpu')
+    device_type = 'cpu' if GPU_NUM == -1 else 'cuda:{}'.format(GPU_NUM)
+    device = torch.device(device_type)
     model = create_model()
     model = model.to(device)
     model.eval()
