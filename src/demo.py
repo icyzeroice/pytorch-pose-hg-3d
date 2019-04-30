@@ -50,12 +50,19 @@ def demo_image(image, model, opt):
 
 def main(opt):
   opt.heads['depth'] = opt.num_output
+
   if opt.load_model == '':
     opt.load_model = '../models/fusion_3d_var.pth'
+
   if opt.gpus[0] >= 0:
+    print('Use CUDA')
     opt.device = torch.device('cuda:{}'.format(opt.gpus[0]))
+
   else:
+    print('Use CPU...')
     opt.device = torch.device('cpu')
+  
+  print(opt)
   
   model, _, _ = create_model(opt)
   model = model.to(opt.device)
@@ -69,6 +76,7 @@ def main(opt):
         print('Running {} ...'.format(image_name))
         image = cv2.imread(image_name)
         demo_image(image, model, opt)
+
   elif is_image(opt.demo):
     print('Running {} ...'.format(opt.demo))
     image = cv2.imread(opt.demo)
