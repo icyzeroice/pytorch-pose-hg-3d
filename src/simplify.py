@@ -1,4 +1,5 @@
 import time
+import os
 import numpy as np
 import cv2 as cv
 import torch
@@ -79,7 +80,8 @@ CAMERA_SCALE = max(CAMERA_HEIGHT, CAMERA_WIDTH) * 1.0
 MEAN = np.array([0.485, 0.456, 0.406], np.float32).reshape(1, 1, 3)
 STD = np.array([0.229, 0.224, 0.225], np.float32).reshape(1, 1, 3)
 
-
+device_type = 'cpu' if GPU_NUM == -1 else 'cuda:{}'.format(GPU_NUM)
+device = torch.device(device_type)
 
 def create_model():
     model = get_pose_net(LAYER_NUM, HEADS)
@@ -92,14 +94,10 @@ def create_model():
     state_dict = checkpoint['state_dict'] if type(checkpoint) == type({}) else checkpoint.state_dict()
     model.load_state_dict(state_dict, strict = False)
 
-    device_type = 'cpu' if GPU_NUM == -1 else 'cuda:{}'.format(GPU_NUM)
-    device = torch.device(device_type)
-    model = create_model()
     model = model.to(device)
     model.eval()
 
     trans_input = get_affine_transform(CAMERA_CENTER, CAMERA_SCALE, 0, [CAMERA_WIDTH, CAMERA_HEIGHT])
-
 
     return model
 
@@ -113,26 +111,35 @@ class BodyPredictor:
         inp = (inp / 255. - MEAN) / STD
         inp = inp.transpose(2, 0, 1)[np.newaxis, ...].astype(np.float32)
         inp = torch.from_numpy(inp).to(device)
-        out = model(inp)[-1]
+        out = self.model(inp)[-1]
 
         # pred = get_preds(out['hm'].detach().cpu().numpy())[0]
         # pred = transform_preds(pred, CAMERA_CENTER, CAMERA_SCALE, (CAMERA_WIDTH, CAMERA_HEIGHT))
         pred_3d = get_preds_3d(out['hm'].detach().cpu().numpy(),
                                out['depth'].detach().cpu().numpy())[0]
-        
 
         return pred_3d
 
 
+def test_single_image(predictor):
+    img = cv.imread('../images/mpii_47.png')
+    return predictor.readImg(img)
+
+def test_multi_images(predictor):
+    pathname = '../images'
+    ls = os.listdir(pathname)
+    for filename in sorted(ls):
+        img = cv.imread(os.path.join(pathname, filename))
+        predictor.readImg(img)
+
 if __name__ == "__main__":
     body_predictor = BodyPredictor()
 
-    img = cv.imread('../images/mpii_47.png')
-
     start_time = time.clock()
-    pred_3d = body_predictor.readImg(img)
+    # pred_3d = test_single_image(body_predictor, img)
+    test_multi_images(body_predictor)
     end_time = time.clock() - start_time
 
-    print(pred_3d)
+    # print(pred_3d)
     print(end_time * 1000)
 
