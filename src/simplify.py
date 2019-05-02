@@ -135,10 +135,10 @@ def test_multi_images(predictor):
 if __name__ == "__main__":
     body_predictor = BodyPredictor()
 
-    start_time = time.clock()
+    start_time = time.time()
     # pred_3d = test_single_image(body_predictor, img)
-    test_multi_images(body_predictor)
-    end_time = time.clock() - start_time
+    test_single_image(body_predictor)
+    end_time = time.time() - start_time
 
     # print(pred_3d)
     print(end_time * 1000)
